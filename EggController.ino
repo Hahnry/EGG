@@ -11,13 +11,14 @@
 //sensors
 #define SensorWagenLinks A1
 #define SensorWagenRechts A2
-#define SensorGreiferOben A3
-#define SensorGreiferUnten A4
+#define SensorGreiferOben A4
+#define SensorGreiferUnten A3
 
 #define StartButton A0
 #define ResetButton A5
 
 Servo servoGreifer;
+int moveTimer = 0;
 
 
 enum State {
@@ -28,7 +29,8 @@ enum State {
   MOVE_UP,
   MOVE_RIGHT,
   MOVE_DOWN_2,
-  DROP
+  DROP,
+  MOVE_UP_2
 };
 
 State state = RESET;
@@ -97,14 +99,14 @@ void setup() {
 void loop() {
   analogWrite(ENABLE_Wagen, 255);
   analogWrite(ENABLE_Zahnstange, 255);
-//Reset Button
+  //Reset Button
   if (digitalRead(ResetButton) == LOW) {
     stopAll();
     state = RESET;
     Serial.println("Reset");
   }
 
-//Start Button
+  //Start Button
   static bool lastStart = HIGH;
   bool currentStart = digitalRead(StartButton);
 
@@ -122,13 +124,14 @@ void loop() {
         moveUp();
         Serial.print("MOvingUp ");
       } else if (digitalRead(SensorWagenLinks) == HIGH) {
+        servoGreifer.write(90);
         stopVertical();
         moveLeft();
         Serial.print("MovingLEft ");
       } else {
         stopAll();
         Serial.print("Stopping ");
-
+        moveTimer = 0;
         state = READY;
       }
       break;
@@ -182,12 +185,29 @@ void loop() {
 
     case DROP:
       servoGreifer.write(70);  // open
-      delay(500);
-      //state = RESET;
+      delay(50);
+      state = MOVE_UP_2;
+      break;
+
+    case MOVE_UP_2:
+      if (digitalRead(SensorGreiferOben) == HIGH and moveTimer <= 20) {
+        moveUp();
+        moveTimer++;
+      } else {
+        stopAll();
+      }
       break;
   }
 
-
+  Serial.print(" L:");
+  Serial.print(digitalRead(SensorWagenLinks));
+  Serial.print(" R:");
+  Serial.print(digitalRead(SensorWagenRechts));
+  Serial.print(" O:");
+  Serial.print(digitalRead(SensorGreiferOben));
+  Serial.print(" U:");
+  Serial.print(digitalRead(SensorGreiferUnten));
+  Serial.print(" : ");
   Serial.println(state);
 
   delay(200);  // loop pacing
